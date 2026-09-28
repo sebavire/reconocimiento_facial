@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        .camara-container { text-align: center; background: #f0f0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        video, canvas, img { width: 100%; max-width: 400px; border-radius: 5px; border: 2px solid #ccc; }
+        #canvas { display: none; } /* El canvas solo procesa la imagen */
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .btn-capturar { background-color: #28a745; margin-top: 10px; }
+        .btn-capturar:hover { background-color: #218838; }
+        #mensaje { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>Registro</h2>
+
+    <form id="formRegistro">
+        <div class="form-group">
+            <label>Cédula:</label>
+            <input type="text" id="cedula" name="cedula" placeholder="Ej: 12345678" required>
+        </div>
+
+        <div class="form-group">
+            <label>Nombre:</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+
+        <div class="form-group">
+            <label>Apellido:</label>
+            <input type="text" id="apellido" name="apellido" required>
+        </div>
+
+        <!-- Sección de Cámara Web -->
+        <div class="camara-container">
+            <label>Captura de Foto para la IA:</label>
+            <video id="video" autoplay playsinline></video>
+            <button type="button" class="btn-capturar" id="btnCapturar">📸 Tomar Foto</button>
+            
+            <!-- Canvas oculto para procesar el fotograma -->
+            <canvas id="canvas"></canvas>
+            
+            <!-- Previsualización de la foto capturada -->
+            <div id="previewContainer" style="display:none; margin-top:10px;">
+                <p><strong>Vista previa de la captura:</strong></p>
+                <img id="fotoPreview" alt="Foto capturada">
+            </div>
+        </div>
+
+        <button type="submit">Guardar Registro</button>
+    </form>
+
+    <div id="mensaje"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const fotoPreview = document.getElementById('fotoPreview');
+        const previewContainer = document.getElementById('previewContainer');
+        const btnCapturar = document.getElementById('btnCapturar');
+        const formRegistro = document.getElementById('formRegistro');
+        const mensajeDiv = document.getElementById('mensaje');
+
+        let fotoBase64 = ''; // Guardará la imagen codificada
+
+        // 1. Iniciar la cámara web usando getUserMedia
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error al acceder a la cámara: ", err);
+                mensajeDiv.innerHTML = "<span style='color:red;'>No se pudo acceder a la cámara web.</span>";
+            });
+
+        // 2. Evento para capturar el fotograma actual
+        btnCapturar.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+
+            // Dibujar la imagen del video en el canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convertir la imagen capturada a formato Base64 (JPG)
+            fotoBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+            // Mostrar la vista previa
+            fotoPreview.src = fotoBase64;
+            previewContainer.style.display = 'block';
+        });
+
+        // 3. Enviar datos y foto al backend vía AJAX
+        formRegistro.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!fotoBase64) {
+                alert("Por favor toma una foto antes de guardar el registro.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('cedula', document.getElementById('cedula').value);
+            formData.append('nombre', document.getElementById('nombre').value);
+            formData.append('apellido', document.getElementById('apellido').value);
+            formData.append('foto', fotoBase64); // Se envía la cadena base64 de la foto
+
+            mensajeDiv.innerHTML = "Guardando...";
+
+            fetch('guardar.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    mensajeDiv.innerHTML = `<span style="color:green;">${data.mensaje}</span>`;
+                    formRegistro.reset();
+                    previewContainer.style.display = 'none';
+                    fotoBase64 = '';
+                } else {
+                    mensajeDiv.innerHTML = `<span style="color:red;">${data.mensaje}</span>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mensajeDiv.innerHTML = "<span style='color:red;'>Error al procesar la solicitud.</span>";
+            });
+        });
+    </script>
+</body>
+</html>
