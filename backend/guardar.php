@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         // 2. Crear la carpeta para la cédula
-        $dir_destino = __DIR__ . "/dataset_fotos/" . $cedula;
+        $dir_destino = __DIR__ . "/fotos/" . $cedula;
         if (!file_exists($dir_destino)) {
             mkdir($dir_destino, 0777, true);
         }
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         echo json_encode([
             "status"  => "success",
-            "mensaje" => "✅ Alumno registrado correctamente y foto guardada en dataset_fotos/$cedula/foto1.jpg"
+            "mensaje" => "✅ Alumno registrado correctamente y foto guardada en fotos/$cedula/foto1.jpg"
         ]);
 
     } catch (PDOException $e) {
